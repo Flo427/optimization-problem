@@ -13,11 +13,27 @@ public class Instance {
 	private int grid[][][];
 	private int boxCount;
 
+	public final int n;
+	private final int l;
+
 	private int width[];
 	private int height[];
 
-	private final int n;
-	private final int l;
+	public Instance(Instance instance) {
+		this.boxCount = instance.boxCount;
+		this.n = instance.n;
+		this.l = instance.l;
+		this.x = new int[n];
+		this.y = new int[n];
+		this.z = new int[n];
+		this.grid = new int[l][l][boxCount];
+		this.width = new int[n];
+		this.height = new int[n];
+		for (int i = 0; i < this.n; ++i) {
+			this.width[i] = instance.width[i];
+			this.height[i] = instance.height[i];
+		}
+	}
 
 	public Instance(int n, int l, int min, int max) {
 		// ensure max is not too big
@@ -101,21 +117,21 @@ public class Instance {
 	}
 
 	public Instance plot(Graphics g, int frameWidth, int frameHeight) {
-		// TODO: Zoom-Faktor
+		int zoom = Math.min((frameWidth - 10) / (boxCount * (l + 10)), 5);
 		Graphics2D g2 = (Graphics2D) g;
 		g2.setColor(new Color(240, 240, 240));
 		g2.fillRect(0, 0, frameWidth, frameHeight);
 
 		g2.setColor(Color.WHITE);
 		for (int i = 0; i < boxCount; ++i) {
-			g2.fillRect(3 * x(i, frameWidth), 3 * y(i, frameWidth), 3 * l, 3 * l);
+			g2.fillRect(zoom * x(i, frameWidth), zoom * y(i, frameWidth), zoom * l, zoom * l);
 		}
 
 		for (int i = 0; i < n; ++i) {
 			g2.setColor(new Color(ThreadLocalRandom.current().nextInt(0, 256),
 					ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256)));
-			g2.fillRect(3 * (x[i] + x(z[i], frameWidth)), 3 * (y[i] + y(z[i], frameWidth)), 3 * width[i],
-					3 * height[i]);
+			g2.fillRect(zoom * (x[i] + x(z[i], frameWidth)), zoom * (y[i] + y(z[i], frameWidth)), zoom * width[i],
+					zoom * height[i]);
 		}
 
 		return this;
@@ -147,9 +163,11 @@ public class Instance {
 
 					// if any placement successful, go to next rectangle if existing
 					if (successful) {
-						System.out.println("Rectangle " + i + ": (" + x[i] + "," + y[i] + "," + z[i] + ")");
+						// System.out.println("Rectangle " + i + ": (" + x[i] + "," + y[i] + "," + z[i]
+						// + ")");
 						++i;
 						if (i == n) {
+							boxCount = z_value + 1;
 							return;
 						}
 						if (width[i] < height[i]) {
@@ -190,6 +208,46 @@ public class Instance {
 		int swap = width[i];
 		width[i] = height[i];
 		height[i] = swap;
+	}
+
+	public void swapRectangles(int i, int j) {
+		int swap = width[i];
+		width[i] = width[j];
+		width[j] = swap;
+		swap = height[i];
+		height[i] = height[j];
+		height[j] = swap;
+	}
+
+	public void newRectanglePosition(int i, int pos) {
+		int swap_width = width[i];
+		int swap_height = height[i];
+		if (i < pos) {
+			for (int j = i; j < pos; ++j) {
+				width[j] = width[j + 1];
+				height[j] = height[j + 1];
+			}
+		} else {
+			for (int j = i; j > pos; --j) {
+				width[j] = width[j - 1];
+				height[j] = height[j - 1];
+			}			
+		}
+		width[pos] = swap_width;
+		height[pos] = swap_height;
+	}
+
+	public int getObjectiveValue() {
+		int sum = l * l * boxCount;
+		for (int k = 0; k < boxCount; ++k) {
+			for (int j = 0; j < n; ++j) {
+				for (int i = 0; i < n; ++i) {
+					// prefers rectangles in first box(es)
+					sum += grid[i][j][k] * k;
+				}
+			}
+		}
+		return sum;
 	}
 
 }
